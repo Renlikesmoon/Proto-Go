@@ -18,13 +18,20 @@ func main() {
 	ctx := context.Background()
 	logger := waLog.Noop
 
-	js, err := jsonstore.NewJSONStore("session.json")
-	if err != nil {
-		fmt.Println("❌ Gagal load session:", err)
-		return
-	}
+	js := jsonstore.NewJSONStore("session.json")
 
-	client := whatsmeow.NewClient(js.GetStore(), logger)
+	client := whatsmeow.NewClient(nil, logger)
+
+	// coba load session
+	data, err := js.Load()
+	if err == nil {
+		err = client.Store.Restore(data)
+		if err != nil {
+			fmt.Println("❌ Gagal restore session:", err)
+		}
+	} else {
+		fmt.Println("ℹ️ Session file belum ada atau gagal load:", err)
+	}
 
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
@@ -45,9 +52,13 @@ func main() {
 		fmt.Println("✅ Scan QR dengan WhatsApp kamu:")
 		fmt.Println(resp)
 
-		err = js.Save()
-		if err != nil {
-			fmt.Println("❌ Gagal simpan session:", err)
+		// Simpan session baru
+		data, err := client.Store.Serialize()
+		if err == nil {
+			err = js.Save(data)
+			if err != nil {
+				fmt.Println("❌ Gagal simpan session:", err)
+			}
 		}
 	}
 
