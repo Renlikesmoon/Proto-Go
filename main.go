@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
-	// "os" // os library no longer needed if not using os.Args
+	// os library tidak diperlukan jika tidak menggunakan os.Args lagi
+	// "os" 
 
 	// Pastikan jalur impor ini benar untuk pengaturan modul Anda.
 	// Ganti "github.com/Renlikesmoon/Proto-Go" dengan nama modul Anda jika berbeda.
 	"github.com/Renlikesmoon/Proto-Go/commands" // Untuk commands.HandleMessage
 	"github.com/Renlikesmoon/Proto-Go/lib"      // Untuk lib.StartClient dan lib.Client
-	// "github.com/Renlikesmoon/Proto-Go/config" // Config digunakan oleh commands, tidak secara langsung di main, jadi impor ini sering tidak terlalu dibutuhkan di sini tetapi tidak masalah jika ada.
 
 	"go.mau.fi/whatsmeow/types/events" // Untuk event whatsmeow
 )
@@ -17,12 +17,13 @@ import (
 func main() {
 	// --- Nomor telepon langsung ditetapkan di sini ---
 	// Ganti dengan nomor yang Anda inginkan.
-	phone := "6285954540177"
+	phone := "6285954540177" // Nomor telepon yang Anda berikan
 	// --- Akhir hardcode ---
 
 	// Mulai klien Whatsmeow. Fungsi ini menangani koneksi,
 	// pairing (jika diperlukan), dan mengembalikan kesalahan apa pun.
-	err := lib.StartClient(phone) // Ini memanggil fungsi StartClient dari paket lib Anda
+	// Panggilan ini akan memanggil fungsi StartClient yang ada di paket 'lib'.
+	err := lib.StartClient(phone)
 	if err != nil {
 		log.Fatalf("Error saat memulai klien WhatsApp: %v", err)
 	}
@@ -47,11 +48,11 @@ func main() {
 			log.Println("Klien WhatsApp terputus.")
 		case *events.QR:
 			// lib.StartClient Anda sudah menangani tampilan kode QR.
-			// Kita hanya akan mencatat bahwa event QR terjadi di sini.
+			// Kita hanya akan mencatat bahwa event QR terjadi di sini tanpa mencoba mengakses v.QRCode.
 			log.Println("Menerima event kode QR (QR ditampilkan oleh lib.StartClient).")
 		case *events.PairingCode:
 			// Serupa dengan QR, event PairingCode ditangani oleh PairPhone di StartClient.
-			// Kita hanya akan mencatat bahwa event Pairing Code terjadi di sini.
+			// Kita hanya akan mencatat bahwa event Pairing Code terjadi di sini tanpa mencoba mengakses v.Code.
 			log.Println("Menerima event kode Pairing (kode ditampilkan oleh lib.StartClient).")
 		}
 	})
