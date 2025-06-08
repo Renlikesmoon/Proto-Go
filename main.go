@@ -4,65 +4,73 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types/events"
-	waLog "go.mau.fi/whatsmeow/util/log"
+	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/util/log"
 
-	"github.com/Renlikesmoon/Proto-Go/jsonstore"
+	"github.com/Renlikesmoon/Proto-Go/jsonstore" // Pastikan sesuai path folder
 )
 
-var Client *whatsmeow.Client
-
 func main() {
-	err := StartClient()
-	if err != nil {
-		fmt.Println("❌ Error:", err)
-	}
-}
-
-func StartClient() error {
 	ctx := context.Background()
-	dbLog := waLog.Noop
 
-	js, err := jsonstore.NewJSONStore("session.json")
+	// Konfigurasi pairing
+	phoneNumber := "6285954540177"               // Ganti dengan nomor Anda
+	clientType := whatsmeow.PairClientChrome     // Bisa juga Firefox, Edge, Safari
+	clientName := "Go Bot (Desktop)"             // Nama klien WhatsApp
+
+	// Load session dari file JSON
+	store, err := jsonstore.NewJSONStore("session.json")
 	if err != nil {
-		return err
+		fmt.Println("❌ Gagal load session:", err)
+		return
 	}
 
-	Client = whatsmeow.NewClient(js.GetDevice(), dbLog)
+	logger := log.Noop
+	client := whatsmeow.NewClient(store.GetDevice(), logger)
 
-	Client.AddEventHandler(func(evt interface{}) {
+	// Event handler
+	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
+			fmt.Println("📩 Pesan dari:", v.Info.Sender.String())
 		case *events.Disconnected:
 			fmt.Println("🔌 Terputus dari WhatsApp")
 		}
 	})
 
-	if Client.Store.ID == nil {
-		resp, err := Client.Pair(ctx)
+	// Jika belum login, lakukan pairing otomatis
+	if client.Store.ID == nil {
+		resp, err := client.PairPhone(ctx, phoneNumber, false, clientType, clientName)
 		if err != nil {
-			return fmt.Errorf("❌ Gagal pairing: %w", err)
+			fmt.Println("❌ Pairing gagal:", err)
+			return
 		}
-		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
-		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
+		fmt.Println("✅ Pairing berhasil. Kode:", resp)
 
-		Client.AddEventHandler(func(evt interface{}) {
-			if _, ok := evt.(*events.PairSuccess); ok {
-				js.Save()
-				fmt.Println("💾 Session disimpan ke session.json")
-			}
-		})
-	} else {
-		err = Client.Connect()
-		if err != nil {
-			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err)
+		// Simpan session
+		if err := store.Save(); err != nil {
+			fmt.Println("❌ Gagal simpan session:", err)
 		}
-		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
 	}
 
-	return nil
+	// Connect
+	if err := client.Connect(); err != nil {
+		fmt.Println("❌ Gagal konek:", err)
+		return
+	}
+
+	fmt.Println("✅ Terhubung ke WhatsApp sebagai", client.Store.ID.User)
+
+	// Tunggu Ctrl+C untuk keluar
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+
+	fmt.Println("👋 Keluar dari aplikasi.")
+	client.Disconnect()
 }
