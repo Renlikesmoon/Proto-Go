@@ -4,9 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/username/Proto-Go/config"
-	"github.com/username/Proto-Go/lib"
-	"github.com/username/Proto-Go/commands"
+	"github.com/Renlikesmoon/Proto-Go/config"
+	"github.com/Renlikesmoon/Proto-Go/lib"
+	"github.com/Renlikesmoon/Proto-Go/commands"
 
 	"go.mau.fi/whatsmeow/types/events"
 )
