@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/mdp/qrterminal/v3"
-	"github.com/tulir/whatsmeow"
-	"github.com/tulir/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 )
