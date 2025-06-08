@@ -8,14 +8,15 @@ import (
 	"syscall"
 
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 func main() {
 	logger := waLog.Noop
-	device := whatsmeow.NewDevice()
-	client := whatsmeow.NewClient(device, logger)
+	dbLog := waLog.Noop
+	client := whatsmeow.NewClient(nil, logger)
 
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
@@ -32,12 +33,7 @@ func main() {
 		return
 	}
 
-	qrChan, err := client.GetQRChannel(context.Background())
-	if err != nil {
-		fmt.Println("Gagal mendapatkan QR channel:", err)
-		return
-	}
-
+	qrChan, _ := client.GetQRChannel(context.Background())
 	for evt := range qrChan {
 		if evt.Event == "code" {
 			fmt.Println("Scan QR dengan WhatsApp kamu:", evt.Code)
