@@ -13,6 +13,7 @@ import (
 	"github.com/mdp/qrterminal/v3"
 )
 
+func main() {
 var Client *whatsmeow.Client
 
 // StartClient menginisialisasi klien Whatsmeow dan menangani autentikasi.
@@ -82,4 +83,5 @@ func StartClient() error { // Parameter 'phoneNumber' telah dihapus
 		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
 	}
 	return nil
+}
 }
