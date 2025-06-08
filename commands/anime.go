@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"whatsbot/lib"
+	"package commands
+
+import (
+	"strings"
+	"github.com/Renlikesmoon/Proto-Go/lib"
 
 	"go.mau.fi/whatsmeow/types/events"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
