@@ -8,18 +8,18 @@ import (
 	"syscall"
 
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types/events"
-	"go.mau.fi/whatsmeow/types"
-	"go.mau.fi/whatsmeow/util/log"
+	waLog "go.mau.fi/whatsmeow/util/log"
 
-	"github.com/Renlikesmoon/Proto-Go/jsonstore" // Pastikan sesuai path folder
+	"github.com/Renlikesmoon/Proto-Go/jsonstore" // Pastikan sesuai dengan struktur proyek Anda
 )
 
 func main() {
 	ctx := context.Background()
 
 	// Konfigurasi pairing
-	phoneNumber := "6285954540177"               // Ganti dengan nomor Anda
+	phoneNumber := "6285954540187"               // Ganti dengan nomor Anda
 	clientType := whatsmeow.PairClientChrome     // Bisa juga Firefox, Edge, Safari
 	clientName := "Go Bot (Desktop)"             // Nama klien WhatsApp
 
@@ -30,7 +30,7 @@ func main() {
 		return
 	}
 
-	logger := log.Noop
+	logger := waLog.Noop
 	client := whatsmeow.NewClient(store.GetDevice(), logger)
 
 	// Event handler
