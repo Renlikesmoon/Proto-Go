@@ -15,7 +15,6 @@ import (
 func main() {
 	ctx := context.Background()
 	logger := waLog.Noop
-
 	client := whatsmeow.NewClient(nil, logger)
 
 	client.AddEventHandler(func(evt interface{}) {
@@ -27,24 +26,22 @@ func main() {
 		}
 	})
 
-	if client.Store.ID == nil {
-		resp, err := client.PairPhone(ctx, "6285954540177", false, whatsmeow.PairClientChrome, "GoBot")
-		if err != nil {
-			fmt.Println("❌ Gagal pairing:", err)
-			return
-		}
-
-		fmt.Println("✅ Scan QR dengan WhatsApp kamu:")
-		fmt.Println(resp)
-
-	}
-
-	err = client.Connect()
+	qrChan, _ := client.GetQRChannel(ctx)
+	err := client.Connect()
 	if err != nil {
 		fmt.Println("❌ Gagal konek:", err)
 		return
 	}
-	fmt.Println("✅ Terhubung sebagai", client.Store.ID.User)
+
+	for evt := range qrChan {
+		if evt.Event == "code" {
+			fmt.Println("✅ Scan QR dengan WhatsApp kamu:", evt.Code)
+		} else {
+			fmt.Println("❌ QR error:", evt.Code)
+		}
+	}
+
+	fmt.Println("✅ Terhubung")
 
 	// Tunggu Ctrl+C untuk exit
 	ch := make(chan os.Signal, 1)
