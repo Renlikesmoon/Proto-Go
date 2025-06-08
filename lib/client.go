@@ -18,7 +18,7 @@ var Client *whatsmeow.Client
 func StartClient() {
 	ctx := context.Background()
 
-	dbLog := waLog.Noop // logger minimal agar tidak spam console
+	dbLog := waLog.Noop
 	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		fmt.Println("❌ Gagal konek database:", err)
@@ -33,7 +33,6 @@ func StartClient() {
 
 	Client = whatsmeow.NewClient(device, dbLog)
 
-	// Event handler contoh: tampilkan pesan masuk dan disconnect
 	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
@@ -44,8 +43,8 @@ func StartClient() {
 	})
 
 	if Client.Store.ID == nil {
-		// Belum login, harus pairing
-		resp, err := Client.PairPhone(ctx, "", false, "client", "")
+		var PairClientTypeClient whatsmeow.PairClientType = "client"
+		resp, err := Client.PairPhone(ctx, "", false, PairClientTypeClient, "")
 		if err != nil {
 			fmt.Println("❌ Gagal pairing:", err)
 			return
@@ -54,7 +53,6 @@ func StartClient() {
 		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
 		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
 	} else {
-		// Sudah login, langsung connect
 		err = Client.Connect()
 		if err != nil {
 			fmt.Println("❌ Gagal konek ke WhatsApp:", err)
