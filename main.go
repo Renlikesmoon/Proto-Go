@@ -18,8 +18,6 @@ func main() {
 	ctx := context.Background()
 	logger := waLog.Noop
 
-	js := jsonstore.NewJSONStore("session.json")
-
 	client := whatsmeow.NewClient(nil, logger)
 
 	client.AddEventHandler(func(evt interface{}) {
