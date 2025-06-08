@@ -24,7 +24,7 @@ func main() {
 
 	// Start the Whatsmeow client. This function handles connecting,
 	// pairing (if needed), and returning any errors.
-	err := lib.StartClient(phone)
+	err := lib.StartClient(phone) // This calls the StartClient function from your lib package
 	if err != nil {
 		log.Fatalf("Error starting WhatsApp client: %v", err)
 	}
@@ -50,17 +50,14 @@ func main() {
 			// You could add custom reconnection logic here if needed,
 			// but for most cases, whatsmeow's built-in handling is sufficient.
 		case *events.QR:
-			// This event is usually handled within StartClient's PairPhone call,
-			// but it's good to be aware it exists for direct QR event handling if needed.
-			// For our current setup, StartClient directly generates and logs the QR.
-			log.Printf("Received QR code event (handled by StartClient): %s\n", v.QRCode)
+			// Your lib.StartClient already handles displaying the QR code.
+			// We'll just log that the QR event occurred here.
+			log.Println("Received QR code event (QR displayed by lib.StartClient).")
 		case *events.PairingCode:
-			// Similar to QR, this event is handled by StartClient's PairPhone.
-			log.Printf("Received pairing code event (handled by StartClient): %s\n", v.Code)
+			// Your lib.StartClient already handles displaying the pairing code.
+			// We'll just log that the PairingCode event occurred here.
+			log.Println("Received Pairing Code event (code displayed by lib.StartClient).")
 		// Add other event types you might want to log or handle here.
-		// For example:
-		// case *events.Presence:
-		// 	log.Printf("Presence update from %s: %s\n", v.From, v.State)
 		}
 	})
 
