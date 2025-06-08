@@ -5,73 +5,60 @@ import (
 	"fmt"
 	"os"
 
-	waTypes "go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/store"
 )
 
-type JSONSessionStore struct {
+type JSONStore struct {
 	filePath string
-	data     *store.Device
-	memStore *mem.Store
+	store    *store.Store
 }
 
-func NewJSONStore(filePath string) (*JSONSessionStore, error) {
-	memStore := mem.New()
-	js := &JSONSessionStore{
+func NewJSONStore(filePath string) (*JSONStore, error) {
+	js := &JSONStore{
 		filePath: filePath,
-		memStore: memStore,
 	}
 
-	err := js.load()
+	err := js.Load()
 	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("load session error: %w", err)
+		return nil, err
 	}
+
 	return js, nil
 }
 
-// Memuat device dari file JSON
-func (s *JSONSessionStore) load() error {
-	file, err := os.Open(s.filePath)
+func (js *JSONStore) Load() error {
+	file, err := os.Open(js.filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	var session legacy.Device
-	err = json.NewDecoder(file).Decode(&session)
+	s := store.NewStore()
+	err = json.NewDecoder(file).Decode(&s.Data)
 	if err != nil {
-		return fmt.Errorf("decode error: %w", err)
+		return fmt.Errorf("decode session json error: %w", err)
 	}
 
-	device := store.NewDevice(s.memStore, waTypes.DeviceID{})
-	err = device.Restore(&session)
-	if err != nil {
-		return fmt.Errorf("restore error: %w", err)
-	}
-
-	s.data = device
+	js.store = s
 	return nil
 }
 
-// Simpan session ke file
-func (s *JSONSessionStore) Save() error {
-	if s.data == nil {
-		return fmt.Errorf("device is nil")
+func (js *JSONStore) Save() error {
+	if js.store == nil {
+		return fmt.Errorf("store is nil")
 	}
-
-	session := s.data.Serialize()
-	file, err := os.Create(s.filePath)
+	file, err := os.Create(js.filePath)
 	if err != nil {
-		return fmt.Errorf("file create error: %w", err)
+		return err
 	}
 	defer file.Close()
 
-	return json.NewEncoder(file).Encode(session)
+	return json.NewEncoder(file).Encode(js.store.Data)
 }
 
-func (s *JSONSessionStore) GetDevice() *store.Device {
-	return s.data
-}
-
-func (s *JSONSessionStore) SetDevice(device *store.Device) {
-	s.data = device
+func (js *JSONStore) GetStore() *store.Store {
+	if js.store == nil {
+		js.store = store.NewStore()
+	}
+	return js.store
 }
