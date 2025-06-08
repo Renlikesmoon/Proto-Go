@@ -2,56 +2,62 @@ package lib
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"os"
-	"time"
 
-	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
-	"google.golang.org/protobuf/proto"
+	"go.mau.fi/whatsmeow/types/events"
+
+	"github.com/mdp/qrterminal/v3"
 )
 
 var Client *whatsmeow.Client
 
-func InitClient() {
-	dbLog := waLog.Noop // kosongkan logger (tidak spam)
-	ctx := context.Background()
-
+func StartClient() {
+	dbLog := waLog.Noop // tidak spam console
 	container, err := sqlstore.New("sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
-		log.Fatalf("DB error: %v", err)
+		fmt.Println("❌ Gagal konek DB:", err)
+		os.Exit(1)
 	}
 
-	deviceStore, err := container.GetFirstDevice(ctx)
+	device, err := container.GetFirstDevice(context.Background())
 	if err != nil {
-		log.Fatalf("Device store error: %v", err)
+		fmt.Println("❌ Gagal ambil device:", err)
+		os.Exit(1)
 	}
 
-	Client = whatsmeow.NewClient(deviceStore, waLog.Noop)
+	Client = whatsmeow.NewClient(device, dbLog)
 
+	// Event handler
 	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
-		case *whatsmeow.events.ConnectionOpened:
-			log.Println("[OK] Bot connected as:", Client.Store.ID.User)
-		case *whatsmeow.events.Disconnected:
-			log.Println("[!] Disconnected")
+		case *events.Message:
+			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
+		case *events.Disconnected:
+			fmt.Println("🔌 Terputus dari WhatsApp")
 		}
 	})
 
 	if Client.Store.ID == nil {
-		pairResp, err := Client.PairPhone(ctx, "628xxx", false, whatsmeow.PairClientTypeClient, "")
+		// Pairing baru
+		resp, err := Client.PairPhone(context.Background(), "", false, whatsmeow.PairClientTypeClient, "")
 		if err != nil {
-			log.Fatalf("Pair error: %v", err)
+			fmt.Println("❌ Gagal pairing:", err)
+			return
 		}
 
-		qrterminal.Generate(pairResp, qrterminal.L, os.Stdout)
-		log.Println("[!] Scan QR Code above to login")
+		qrterminal.GenerateHalfBlock(resp.URI)
+		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
 	} else {
+		// Langsung konek
 		err = Client.Connect()
 		if err != nil {
-			log.Fatalf("Connect error: %v", err)
+			fmt.Println("❌ Gagal konek ke WhatsApp:", err)
+			return
 		}
+		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
 	}
 }
