@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/store/mem"
 	waLog "go.mau.fi/whatsmeow/util/log"
-	"go.mau.fi/whatsmeow/types/events"
 
+	"go.mau.fi/whatsmeow/types/events"
 	"github.com/mdp/qrterminal/v3"
 )
 
 var Client *whatsmeow.Client
+var sessionFile = "session.json"
 
 func main() {
 	err := StartClient()
@@ -22,28 +24,23 @@ func main() {
 	}
 }
 
-// StartClient menginisialisasi klien Whatsmeow dan menangani autentikasi.
 func StartClient() error {
-	// --- Detail Pairing Ditetapkan Langsung di sini ---
-	phoneNumber := "6285954540177"
-	clientType := whatsmeow.PairClientChrome
-	clientDisplayName := "Go Bot (Desktop)"
-	// --- Akhir Hardcode Detail ---
-
 	ctx := context.Background()
 	dbLog := waLog.Noop
 
-	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
-	if err != nil {
-		return fmt.Errorf("❌ Gagal konek database: %w", err)
-	}
+	// In-memory store
+	store := mem.NewStore()
 
-	device, err := container.GetFirstDevice(ctx)
-	if err != nil {
-		return fmt.Errorf("❌ Gagal ambil device: %w", err)
-	}
+	// Buat client kosong untuk awal
+	Client = whatsmeow.NewClient(store.NewDevice(), dbLog)
 
-	Client = whatsmeow.NewClient(device, dbLog)
+	// Coba load session dari file JSON
+	if _, err := os.Stat(sessionFile); err == nil {
+		err := LoadSession()
+		if err != nil {
+			return fmt.Errorf("❌ Gagal load session: %w", err)
+		}
+	}
 
 	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
@@ -55,15 +52,26 @@ func StartClient() error {
 	})
 
 	if Client.Store.ID == nil {
-		resp, err := Client.PairPhone(ctx, phoneNumber, false, clientType, clientDisplayName)
+		resp, err := Client.Pair(ctx)
 		if err != nil {
 			return fmt.Errorf("❌ Gagal pairing: %w", err)
 		}
 		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
 		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
-		fmt.Printf("Kode Pairing: %s\n", resp)
+
+		// Tunggu sampai paired sebelum simpan session
+		Client.AddEventHandler(func(evt interface{}) {
+			if _, ok := evt.(*events.PairSuccess); ok {
+				err := SaveSession()
+				if err != nil {
+					fmt.Println("❌ Gagal simpan session:", err)
+				} else {
+					fmt.Println("💾 Session disimpan ke", sessionFile)
+				}
+			}
+		})
 	} else {
-		err = Client.Connect()
+		err := Client.Connect()
 		if err != nil {
 			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err)
 		}
@@ -71,4 +79,22 @@ func StartClient() error {
 	}
 
 	return nil
+}
+
+// Simpan session ke file JSON
+func SaveSession() error {
+	data, err := Client.Store.(*mem.Device).Marshal()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(sessionFile, data, 0600)
+}
+
+// Load session dari file JSON
+func LoadSession() error {
+	data, err := os.ReadFile(sessionFile)
+	if err != nil {
+		return err
+	}
+	return Client.Store.(*mem.Device).Unmarshal(data)
 }
