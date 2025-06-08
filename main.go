@@ -19,7 +19,7 @@ func main() {
 	ctx := context.Background()
 
 	// Konfigurasi pairing
-	phoneNumber := "6285954540187"               // Ganti dengan nomor Anda
+	phoneNumber := "6285954540177"               // Ganti dengan nomor Anda
 	clientType := whatsmeow.PairClientChrome     // Bisa juga Firefox, Edge, Safari
 	clientName := "Go Bot (Desktop)"             // Nama klien WhatsApp
 
