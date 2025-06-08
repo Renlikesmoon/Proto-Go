@@ -22,17 +22,6 @@ func main() {
 
 	client := whatsmeow.NewClient(nil, logger)
 
-	// coba load session
-	data, err := js.Load()
-	if err == nil {
-		err = client.Store.Restore(data)
-		if err != nil {
-			fmt.Println("❌ Gagal restore session:", err)
-		}
-	} else {
-		fmt.Println("ℹ️ Session file belum ada atau gagal load:", err)
-	}
-
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
