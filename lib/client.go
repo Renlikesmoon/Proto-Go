@@ -50,7 +50,8 @@ func StartClient() {
 
 	// Jika belum ada session ID, mulai proses pairing dengan QR
 	if Client.Store.ID == nil {
-		resp, err := Client.PairPhone(ctx, "", false, whatsmeow.PairClientType("client"), "")
+		// Mengganti "client" dengan whatsmeow.PairClientChrome
+		resp, err := Client.PairPhone(ctx, "", false, whatsmeow.PairClientChrome, "")
 		if err != nil {
 			fmt.Println("❌ Gagal pairing:", err)
 			return
