@@ -1,74 +1,70 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"log"
 	"os"
 
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store/sqlstore"
-	waLog "go.mau.fi/whatsmeow/util/log"
-	"go.mau.fi/whatsmeow/types/events"
+	// Ensure these import paths are correct for your module setup.
+	// Replace "github.com/Renlikesmoon/Proto-Go" with your actual module name if different.
+	"github.com/Renlikesmoon/Proto-Go/commands" // For commands.HandleMessage
+	"github.com/Renlikesmoon/Proto-Go/lib"      // For lib.StartClient and lib.Client
+	// "github.com/Renlikesmoon/Proto-Go/config" // Config is used by commands, not directly in main, so this import is often not strictly needed here but doesn't hurt.
 
-	"github.com/mdp/qrterminal/v3"
+	"go.mau.fi/whatsmeow/types/events" // For whatsmeow event types
 )
 
-var Client *whatsmeow.Client
+// main is the entry point of the Go application.
+func main() {
+	// Check if a phone number argument is provided.
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: go run . <phone_number>")
+	}
+	// Get the phone number from the command line arguments.
+	phone := os.Args[1]
 
-// StartClient initializes the Whatsmeow client and handles authentication.
-// It now accepts a phoneNumber string to be used during the pairing process.
-func StartClient(phoneNumber string) error { // Added phoneNumber parameter and error return
-	ctx := context.Background()
-
-	// Use no-op logger to avoid spamming logs
-	dbLog := waLog.Noop
-
-	// Create SQLite session database connection
-	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
+	// Start the Whatsmeow client. This function handles connecting,
+	// pairing (if needed), and returning any errors.
+	err := lib.StartClient(phone)
 	if err != nil {
-		return fmt.Errorf("❌ Gagal konek database: %w", err) // Return error instead of os.Exit
+		log.Fatalf("Error starting WhatsApp client: %v", err)
 	}
 
-	// Get the first device from the store
-	device, err := container.GetFirstDevice(ctx)
-	if err != nil {
-		return fmt.Errorf("❌ Gagal ambil device: %w", err) // Return error
-	}
-
-	// Initialize Whatsmeow client with device and logger
-	Client = whatsmeow.NewClient(device, dbLog)
-
-	// Event handler for incoming events
-	Client.AddEventHandler(func(evt interface{}) {
+	// Add an event handler to the Whatsmeow client to process incoming events.
+	// This runs in a separate goroutine managed by whatsmeow itself.
+	lib.Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
-			// You'll likely want to route this to your commands.HandleMessage here
-			// For example: commands.HandleMessage(v) (make sure to import "wa_bot/commands")
+			// Ignore messages sent by the bot itself to prevent infinite loops.
+			if v.Info.MessageSource.IsFromMe {
+				return
+			}
+			// Route incoming messages to the commands handler.
+			commands.HandleMessage(v)
+		case *events.Connected:
+			// Log when the WhatsApp client successfully connects.
+			log.Println("WhatsApp client connected!")
 		case *events.Disconnected:
-			fmt.Println("🔌 Terputus dari WhatsApp")
+			// Log when the WhatsApp client disconnects.
+			// Whatsmeow library typically handles automatic reconnection.
+			log.Println("WhatsApp client disconnected.")
+			// You could add custom reconnection logic here if needed,
+			// but for most cases, whatsmeow's built-in handling is sufficient.
+		case *events.QR:
+			// This event is usually handled within StartClient's PairPhone call,
+			// but it's good to be aware it exists for direct QR event handling if needed.
+			// For our current setup, StartClient directly generates and logs the QR.
+			log.Printf("Received QR code event (handled by StartClient): %s\n", v.QRCode)
+		case *events.PairingCode:
+			// Similar to QR, this event is handled by StartClient's PairPhone.
+			log.Printf("Received pairing code event (handled by StartClient): %s\n", v.Code)
+		// Add other event types you might want to log or handle here.
+		// For example:
+		// case *events.Presence:
+		// 	log.Printf("Presence update from %s: %s\n", v.From, v.State)
 		}
 	})
 
-	// If no session ID exists, start the pairing process with QR code
-	if Client.Store.ID == nil {
-		// Use the provided phoneNumber for pairing
-		resp, err := Client.PairPhone(ctx, phoneNumber, false, whatsmeow.PairClientChrome, "Go Bot (Desktop)")
-		if err != nil {
-			return fmt.Errorf("❌ Gagal pairing: %w", err) // Return error
-		}
-
-		// Display QR code in the terminal
-		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
-		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
-		fmt.Printf("Kode Pairing: %s\n", resp) // Also show pairing code for convenience
-	} else {
-		// If session exists, just connect
-		err = Client.Connect()
-		if err != nil {
-			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err) // Return error
-		}
-		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
-	}
-	return nil // No error
+	// This blocks the main goroutine indefinitely, keeping the application running.
+	// Whatsmeow operates in its own goroutines for networking and event handling.
+	select {}
 }
