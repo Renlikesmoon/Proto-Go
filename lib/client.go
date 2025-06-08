@@ -10,8 +10,8 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"go.mau.fi/whatsmeow/types/events"
 
-	"github.com/mdp/qrterminal/v3"
-	"github.com/mdp/qrterminal/v3/qr"
+	"github.com/mdp/qrterminal/v3@latest"
+	"github.com/mdp/qrterminal/v3@latest/qr"
 )
 
 var Client *whatsmeow.Client
