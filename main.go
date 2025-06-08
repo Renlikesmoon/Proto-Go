@@ -1,63 +1,80 @@
-package main
+package lib
 
 import (
-	"log"
-	// os library tidak diperlukan jika tidak menggunakan os.Args lagi
-	// "os" 
+	"context"
+	"fmt"
+	"os"
 
-	// Pastikan jalur impor ini benar untuk pengaturan modul Anda.
-	// Ganti "github.com/Renlikesmoon/Proto-Go" dengan nama modul Anda jika berbeda.
-	"github.com/Renlikesmoon/Proto-Go/commands" // Untuk commands.HandleMessage
-	"github.com/Renlikesmoon/Proto-Go/lib"      // Untuk lib.StartClient dan lib.Client
+	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store/sqlstore"
+	waLog "go.mau.fi/whatsmeow/util/log"
+	"go.mau.fi/whatsmeow/types/events"
 
-	"go.mau.fi/whatsmeow/types/events" // Untuk event whatsmeow
+	"github.com/mdp/qrterminal/v3"
 )
 
-// main adalah titik masuk aplikasi Go.
-func main() {
-	// --- Nomor telepon langsung ditetapkan di sini ---
-	// Ganti dengan nomor yang Anda inginkan.
-	phone := "6285954540177" // Nomor telepon yang Anda berikan
-	// --- Akhir hardcode ---
+var Client *whatsmeow.Client
 
-	// Mulai klien Whatsmeow. Fungsi ini menangani koneksi,
-	// pairing (jika diperlukan), dan mengembalikan kesalahan apa pun.
-	// Panggilan ini akan memanggil fungsi StartClient yang ada di paket 'lib'.
-	err := lib.StartClient(phone)
+// StartClient initializes the Whatsmeow client and handles authentication.
+// It now accepts a phoneNumber string to be used during the pairing process.
+func StartClient(phoneNumber string) error { // Added phoneNumber parameter and error return
+	ctx := context.Background()
+
+	// Use no-op logger to avoid spamming logs
+	dbLog := waLog.Noop
+
+	// Create SQLite session database connection
+	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
-		log.Fatalf("Error saat memulai klien WhatsApp: %v", err)
+		return fmt.Errorf("❌ Gagal konek database: %w", err) // Return error instead of os.Exit
 	}
 
-	// Tambahkan event handler ke klien Whatsmeow untuk memproses event yang masuk.
-	// Ini berjalan dalam goroutine terpisah yang dikelola oleh whatsmeow itu sendiri.
-	lib.Client.AddEventHandler(func(evt interface{}) {
+	// Get the first device from the store
+	device, err := container.GetFirstDevice(ctx)
+	if err != nil {
+		return fmt.Errorf("❌ Gagal ambil device: %w", err) // Return error
+	}
+
+	// Initialize Whatsmeow client with device and logger
+	Client = whatsmeow.NewClient(device, dbLog)
+
+	// Event handler for incoming events
+	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			// Abaikan pesan yang dikirim oleh bot itu sendiri untuk mencegah loop tak terbatas.
-			if v.Info.MessageSource.IsFromMe {
-				return
-			}
-			// Rute pesan masuk ke handler perintah.
-			commands.HandleMessage(v)
-		case *events.Connected:
-			// Catat ketika klien WhatsApp berhasil terhubung.
-			log.Println("Klien WhatsApp terhubung!")
+			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
+			// You'll likely want to route this to your commands.HandleMessage here
+			// For example: commands.HandleMessage(v) (make sure to import "wa_bot/commands")
 		case *events.Disconnected:
-			// Catat ketika klien WhatsApp terputus.
-			// Pustaka Whatsmeow biasanya menangani penyambungan ulang otomatis.
-			log.Println("Klien WhatsApp terputus.")
-		case *events.QR:
-			// lib.StartClient Anda sudah menangani tampilan kode QR.
-			// Kita hanya akan mencatat bahwa event QR terjadi di sini tanpa mencoba mengakses v.QRCode.
-			log.Println("Menerima event kode QR (QR ditampilkan oleh lib.StartClient).")
-		case *events.PairingCode:
-			// Serupa dengan QR, event PairingCode ditangani oleh PairPhone di StartClient.
-			// Kita hanya akan mencatat bahwa event Pairing Code terjadi di sini tanpa mencoba mengakses v.Code.
-			log.Println("Menerima event kode Pairing (kode ditampilkan oleh lib.StartClient).")
+			fmt.Println("🔌 Terputus dari WhatsApp")
 		}
 	})
 
-	// Ini akan memblokir goroutine utama tanpa batas waktu, menjaga aplikasi tetap berjalan.
-	// Whatsmeow beroperasi dalam goroutine sendiri untuk jaringan dan penanganan event.
-	select {}
+	// If no session ID exists, start the pairing process with QR code
+	if Client.Store.ID == nil {
+		// THIS IS WHERE YOUR PROVIDED SNIPPET FITS
+		resp, err := Client.PairPhone(
+			ctx,                     // The context for the operation
+			phoneNumber,             // The phone number you want to pair with
+			false,                   // showPushNotification (usually false for terminal bots)
+			whatsmeow.PairClientChrome, // The client type (e.g., Chrome, Firefox, etc.)
+			"Go Bot (Desktop)",      // A display name for the client (e.g., "Chrome (Linux)")
+		)
+		if err != nil {
+			return fmt.Errorf("❌ Gagal pairing: %w", err) // Return error
+		}
+
+		// Display QR code in the terminal
+		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
+		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
+		fmt.Printf("Kode Pairing: %s\n", resp) // Also show pairing code for convenience
+	} else {
+		// If session exists, just connect
+		err = Client.Connect()
+		if err != nil {
+			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err) // Return error
+		}
+		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
+	}
+	return nil // No error
 }
