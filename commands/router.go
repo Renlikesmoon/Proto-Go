@@ -1,39 +1,46 @@
 package commands
 
 import (
-    "strings"
+	"strings"
+	"whatsbot/config"
 
-    "go.mau.fi/whatsmeow"
-    "go.mau.fi/whatsmeow/types/events"
+	"go.mau.fi/whatsmeow/types/events"
 )
 
-var cmds = []Command{
-    &PingCommand{},
-    &TimeCommand{},
-    &HelpCommand{},
-    &AnimeCommand{}
+var commandList = []Command{
+	&PingCommand{},
+	&AnimeCommand{},
 }
 
-func HandleCommand(evt *events.Message, client *whatsmeow.Client) {
-    msg := getMessageText(evt)
-    if msg == "" || !strings.HasPrefix(msg, "!") {
-        return
-    }
+type Command interface {
+	Prefix() string
+	Run(evt *events.Message)
+}
 
-    for _, cmd := range cmds {
-        if strings.HasPrefix(msg, cmd.Prefix()) {
-            cmd.Run(evt, client)
-            break
-        }
-    }
+func HandleMessage(evt *events.Message) {
+	msg := getMessageText(evt)
+
+	if !strings.HasPrefix(msg, config.CommandPrefix) {
+		return
+	}
+
+	// Cek sender owner
+	if string(evt.Info.Sender.String()) != config.OwnerJID {
+		return // langsung stop, hanya owner boleh pakai
+	}
+
+	for _, cmd := range commandList {
+		if strings.HasPrefix(msg, cmd.Prefix()) {
+			cmd.Run(evt)
+			break
+		}
+	}
 }
 
 func getMessageText(evt *events.Message) string {
-    if evt.Message.Conversation != "" {
-        return evt.Message.GetConversation()
-    }
-    if ext := evt.Message.GetExtendedTextMessage(); ext != nil {
-        return ext.GetText()
-    }
-    return ""
+	msg := evt.Message.GetConversation()
+	if msg == "" && evt.Message.ExtendedTextMessage != nil {
+		msg = evt.Message.ExtendedTextMessage.GetText()
+	}
+	return msg
 }
