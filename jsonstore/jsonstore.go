@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"go.mau.fi/whatsmeow/store"
-	"go.mau.fi/whatsmeow/store/legacy"
-	"go.mau.fi/whatsmeow/store/mem"
 	waTypes "go.mau.fi/whatsmeow/types"
 )
 
