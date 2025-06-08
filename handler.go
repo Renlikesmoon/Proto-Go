@@ -1,103 +1,47 @@
 package commands
 
 import (
-    "strings"
-    "context"
+	"strings"
+	"whatsbot/config"
+	"whatsbot/lib"
 
-    "go.mau.fi/whatsmeow"
-    "go.mau.fi/whatsmeow/types/events"
-    waProto "go.mau.fi/whatsmeow/binary/proto"
-    "google.golang.org/protobuf/proto"
+	"go.mau.fi/whatsmeow/types/events"
 )
 
-var cmds = []Command{
-    &PingCommand{},
-    &TimeCommand{},
-    &HelpCommand{},
-}
+func HandleMessage(evt *events.Message) {
+	msg := getMessageText(evt)
 
-func HandleCommand(evt *events.Message, client *whatsmeow.Client) {
-    msg := getMessageText(evt)
-    if msg == "" {
-        return
-    }
+	if !strings.HasPrefix(msg, ".") {
+		return // bukan perintah
+	}
 
-    isReply := false
-    var prefixUsed string
+	// Cek sender, jika bukan owner, langsung return tanpa balas
+	if string(evt.Info.Sender.String()) != config.OwnerJID {
+		return // langsung stop di sini, tidak reply
+	}
 
-    if strings.HasPrefix(msg, "!") {
-        prefixUsed = "!"
-    } else if strings.HasPrefix(msg, ".") {
-        prefixUsed = "."
-        isReply = true
-    } else {
-        return
-    }
-
-    for _, cmd := range cmds {
-        if strings.HasPrefix(msg, cmd.Prefix()) {
-            if isReply {
-                // Balas sebagai reply (bukan hanya kirim pesan)
-                cmdWithReply := wrapWithReply(cmd)
-                cmdWithReply.Run(evt, client)
-            } else {
-                cmd.Run(evt, client)
-            }
-            break
-        }
-    }
+	// proses perintah owner
+	switch {
+	case strings.HasPrefix(msg, ".ping"):
+		sendText(evt, "Pong!")
+	case strings.HasPrefix(msg, ".anime"):
+		// panggil fungsi anime search misal
+		// ...
+	default:
+		// perintah lain
+	}
 }
 
 func getMessageText(evt *events.Message) string {
-    if evt.Message.GetConversation() != "" {
-        return evt.Message.GetConversation()
-    }
-    if ext := evt.Message.GetExtendedTextMessage(); ext != nil {
-        return ext.GetText()
-    }
-    return ""
+	msg := evt.Message.GetConversation()
+	if msg == "" && evt.Message.ExtendedTextMessage != nil {
+		msg = evt.Message.ExtendedTextMessage.GetText()
+	}
+	return msg
 }
 
-// Membungkus command agar kirim balasan sebagai reply
-func wrapWithReply(cmd Command) Command {
-    return &replyCommand{cmd}
-}
-
-type replyCommand struct {
-    inner Command
-}
-
-func (r *replyCommand) Prefix() string {
-    return r.inner.Prefix()
-}
-
-func (r *replyCommand) Run(evt *events.Message, client *whatsmeow.Client) {
-    // Buat inner command mengirim balasan dengan quoted
-    quotedMsg := &waProto.ContextInfo{
-        StanzaId:   evt.Info.ID,
-        Participant: proto.String(string(evt.Info.Sender.User) + "@s.whatsapp.net"),
-        QuotedMessage: evt.Message,
-    }
-
-    // Gunakan contextInfo pada inner command
-    switch c := r.inner.(type) {
-    case *PingCommand:
-        client.SendMessage(context.Background(), evt.Info.Chat, &waProto.Message{
-            Conversation: proto.String("🏓 Pong (reply)!"),
-            ContextInfo:  quotedMsg,
-        })
-    case *TimeCommand:
-        client.SendMessage(context.Background(), evt.Info.Chat, &waProto.Message{
-            Conversation: proto.String("⏰ Waktu server (reply)!"),
-            ContextInfo:  quotedMsg,
-        })
-    case *HelpCommand:
-        client.SendMessage(context.Background(), evt.Info.Chat, &waProto.Message{
-            Conversation: proto.String("📚 Command list (reply)!"),
-            ContextInfo:  quotedMsg,
-        })
-    default:
-        // Fallback: jalankan normal
-        r.inner.Run(evt, client)
-    }
+func sendText(evt *events.Message, text string) {
+	lib.Client.SendMessage(evt.Info.Context, evt.Info.Chat, &waProto.Message{
+		Conversation: &text,
+	})
 }
