@@ -5,8 +5,8 @@ import (
 	"fmt" // Required for fmt.Printf
 	"strings"
 
-	"whatsbot/config" // Import the config package for owner JID and command prefix
-	"whatsbot/lib"    // Import lib to access the global whatsmeow.Client instance
+	"github.com/Renlikesmoon/Proto-Go/config" // Import the config package for owner JID and command prefix
+	"github.com/Renlikesmoon/Proto-Go/lib"    // Import lib to access the global whatsmeow.Client instance
 
 	"go.mau.fi/whatsmeow"       // Required for whatsmeow.Client type
 	"go.mau.fi/whatsmeow/types/events"
