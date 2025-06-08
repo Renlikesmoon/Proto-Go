@@ -11,6 +11,7 @@ var cmds = []Command{
     &PingCommand{},
     &TimeCommand{},
     &HelpCommand{},
+    &AnimeCommand{}
 }
 
 func HandleCommand(evt *events.Message, client *whatsmeow.Client) {
