@@ -18,6 +18,7 @@ var Client *whatsmeow.Client
 // StartClient initializes the Whatsmeow client and handles authentication.
 // It now accepts a phoneNumber string to be used during the pairing process.
 func StartClient(phoneNumber string) error { // Added phoneNumber parameter and error return
+ phoneNumber:= "6285954540177"
 	ctx := context.Background()
 
 	// Use no-op logger to avoid spamming logs
