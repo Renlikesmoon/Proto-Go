@@ -1,27 +1,22 @@
 package commands
 
 import (
-    "context"
-    "log"
+	"context"
+	"whatsbot/lib"
 
-    "go.mau.fi/whatsmeow"
-    "go.mau.fi/whatsmeow/types"
-    "go.mau.fi/whatsmeow/types/events"
-    waProto "go.mau.fi/whatsmeow/binary/proto"
-
-    "google.golang.org/protobuf/proto"
+	"go.mau.fi/whatsmeow/types/events"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
 )
 
 type PingCommand struct{}
 
-func (c *PingCommand) Prefix() string {
-    return "!ping"
+func (p *PingCommand) Prefix() string {
+	return ".ping"
 }
 
-func (c *PingCommand) Run(evt *events.Message, client *whatsmeow.Client) {
-    reply := &waProto.Message{Conversation: proto.String("🏓 Pong!")}
-    _, err := client.SendMessage(context.Background(), evt.Info.Chat, reply)
-    if err != nil {
-        log.Println("❌ Failed to reply:", err)
-    }
+func (p *PingCommand) Run(evt *events.Message) {
+	text := "Pong!"
+	lib.Client.SendMessage(context.Background(), evt.Info.Chat, &waProto.Message{
+		Conversation: &text,
+	})
 }
