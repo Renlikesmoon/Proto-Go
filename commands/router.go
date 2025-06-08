@@ -5,7 +5,8 @@ import (
 	"strings"
 
 	"go.mau.fi/whatsmeow/types/events"
-	"github.com/Renlikesmoon/Proto-Go/lib" // Pastikan import path ini benar sesuai struktur proyek Anda
+	"wa_bot/lib"   // Pastikan import path ini benar sesuai struktur proyek Anda
+	"wa_bot/config" // Import the config package
 )
 
 // commandList holds all the registered commands.
@@ -13,6 +14,8 @@ import (
 var commandList = []Command{
 	&PingCommand{},
 	&AnimeCommand{},
+	&TimeCommand{}, // Add TimeCommand if you implemented it
+	&HelpCommand{}, // Add HelpCommand if you implemented it
 }
 
 // HandleMessage processes incoming messages, checks for command prefixes,
@@ -23,20 +26,20 @@ func HandleMessage(evt *events.Message) {
 	msg := GetMessageText(evt)
 
 	// Check if the message starts with the configured command prefix.
-	if !strings.HasPrefix(msg, config.CommandPrefix) {
+	if !strings.HasPrefix(msg, config.CommandPrefix) { // Use config.CommandPrefix
 		return // Not a command, ignore
 	}
 
 	// Check if the sender is the owner (if configured).
 	// Ensure config.OwnerJID is a string representation of the JID.
-	if string(evt.Info.Sender.String()) != config.OwnerJID {
+	if string(evt.Info.Sender.String()) != config.OwnerJID { // Use config.OwnerJID
 		fmt.Printf("Pesan dari non-owner ditolak: %s\n", evt.Info.Sender.String())
 		return // Block messages from non-owners
 	}
 
 	// Extract the command name from the message.
 	// For example, if msg is "!ping", commandName will be "ping".
-	commandText := strings.TrimPrefix(msg, config.CommandPrefix)
+	commandText := strings.TrimPrefix(msg, config.CommandPrefix) // Use config.CommandPrefix
 	parts := strings.Fields(commandText)
 	if len(parts) == 0 {
 		return // Only prefix, no command, ignore
@@ -45,10 +48,9 @@ func HandleMessage(evt *events.Message) {
 
 	// Find and run the command.
 	for _, cmd := range commandList {
-		// Use cmd.Name() (assuming your Command interface has a Name() method now)
-		// or cmd.Prefix() depending on how you want to match commands.
-		// For simplicity, let's match based on Prefix() as in your original code.
-		if commandName == strings.TrimPrefix(cmd.Prefix(), config.CommandPrefix) {
+		// Match based on the command's Prefix() method.
+		// Trim the prefix from the command's own prefix to match 'commandName'.
+		if commandName == strings.TrimPrefix(cmd.Prefix(), config.CommandPrefix) { // Use config.CommandPrefix
 			// Crucially, pass the whatsmeow.Client instance (from lib.Client)
 			// to the command's Run method.
 			if lib.Client != nil {
@@ -62,15 +64,6 @@ func HandleMessage(evt *events.Message) {
 	}
 }
 
-// NOTE: The 'Command' interface and 'getMessageText' function
+// NOTE: The 'Command' interface and 'GetMessageText' function
 // are assumed to be defined and exported in 'commands/command.go'.
 // They should NOT be present in this file (router.go) to avoid redeclaration errors.
-//
-// The 'Command' interface should look like this in 'commands/command.go':
-// type Command interface {
-// 	Prefix() string // Or Name() depending on your preference
-// 	Run(evt *events.Message, client *whatsmeow.Client)
-// }
-//
-// And GetMessageText should be:
-// func GetMessageText(evt *events.Message) string { ... }
