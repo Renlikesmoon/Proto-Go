@@ -2,7 +2,7 @@ package commands
 
 import (
 	"strings"
-	"whatsbot/config"
+	"github.com/Renlikesmoon/Proto-Go/config"
 
 	"go.mau.fi/whatsmeow/types/events"
 )
