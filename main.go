@@ -8,41 +8,36 @@ import (
 	"syscall"
 
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
 func main() {
 	logger := waLog.Noop
-	client := whatsmeow.NewClient(waLog.Stdout("Client"), logger)
+	client := whatsmeow.NewClient(nil, logger)
 
-	// Jangan langsung connect, tapi pair phone atau scan QR
-	qrChan, err := client.GetQRChannel(context.Background())
-	if err != nil {
-		fmt.Println("Gagal mendapatkan QR channel:", err)
-		return
-	}
-
-	go func() {
-		for evt := range qrChan {
-			if evt.Event == "code" {
-				fmt.Println("Scan QR dengan WhatsApp kamu:", evt.Code)
-			} else {
-				fmt.Println("QR error:", evt.Code)
-			}
+	client.AddEventHandler(func(evt interface{}) {
+		switch v := evt.(type) {
+		case *events.Message:
+			fmt.Println("Pesan dari:", v.Info.Sender.String())
+		case *events.Disconnected:
+			fmt.Println("Terputus dari WhatsApp")
 		}
+	})
+
+	// Tunggu Ctrl+C untuk exit
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+		<-ch
+		fmt.Println("Keluar.")
+		client.Disconnect()
+		os.Exit(0)
 	}()
 
-	err = client.Connect()
+	err := client.Connect()
 	if err != nil {
 		fmt.Println("Gagal konek:", err)
 		return
 	}
-
-	// Tunggu Ctrl+C untuk exit
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	<-ch
-
-	fmt.Println("Keluar.")
-	client.Disconnect()
 }
