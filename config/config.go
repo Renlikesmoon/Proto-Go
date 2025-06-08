@@ -1,3 +1,3 @@
 package config
 
-var OwnerJID = "6281234567890@s.whatsapp.net" // Ganti dengan nomor owner
+var OwnerJID = "6285954540177@s.whatsapp.net" // Ganti dengan nomor owner
