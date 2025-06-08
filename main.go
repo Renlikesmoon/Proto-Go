@@ -16,25 +16,15 @@ import (
 
 func main() {
 	ctx := context.Background()
-
 	logger := waLog.Noop
 
-	// Inisialisasi store JSON
 	js, err := jsonstore.NewJSONStore("session.json")
 	if err != nil {
 		fmt.Println("❌ Gagal load session:", err)
 		return
 	}
 
-	device := js.GetDevice()
-	if device == nil {
-		// Jika tidak ada session, buat device baru
-		memStore := mem.New()
-		device = store.NewDevice(memStore, nil)
-		js.SetDevice(device)
-	}
-
-	client := whatsmeow.NewClient(device, logger)
+	client := whatsmeow.NewClient(js.GetStore(), logger)
 
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
@@ -45,23 +35,22 @@ func main() {
 		}
 	})
 
-	// Pair jika belum login
 	if client.Store.ID == nil {
 		resp, err := client.PairPhone(ctx, "6285954540177", false, whatsmeow.PairClientChrome, "GoBot")
 		if err != nil {
 			fmt.Println("❌ Gagal pairing:", err)
 			return
 		}
-		fmt.Println("✅ Silakan scan QR dengan WhatsApp kamu.")
-		fmt.Println("Pairing code:", resp)
 
-		// Simpan sesi
-		if err := js.Save(); err != nil {
+		fmt.Println("✅ Scan QR dengan WhatsApp kamu:")
+		fmt.Println(resp)
+
+		err = js.Save()
+		if err != nil {
 			fmt.Println("❌ Gagal simpan session:", err)
 		}
 	}
 
-	// Connect
 	err = client.Connect()
 	if err != nil {
 		fmt.Println("❌ Gagal konek:", err)
@@ -69,11 +58,11 @@ func main() {
 	}
 	fmt.Println("✅ Terhubung sebagai", client.Store.ID.User)
 
-	// Tunggu Ctrl+C
+	// Tunggu Ctrl+C untuk exit
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
 
-	fmt.Println("👋 Keluar dari bot.")
+	fmt.Println("👋 Keluar.")
 	client.Disconnect()
 }
