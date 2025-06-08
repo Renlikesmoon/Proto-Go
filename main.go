@@ -2,66 +2,61 @@ package main
 
 import (
 	"log"
-	"os"
+	// "os" // os library no longer needed if not using os.Args
 
-	// Ensure these import paths are correct for your module setup.
-	// Replace "github.com/Renlikesmoon/Proto-Go" with your actual module name if different.
-	"github.com/Renlikesmoon/Proto-Go/commands" // For commands.HandleMessage
-	"github.com/Renlikesmoon/Proto-Go/lib"      // For lib.StartClient and lib.Client
-	// "github.com/Renlikesmoon/Proto-Go/config" // Config is used by commands, not directly in main, so this import is often not strictly needed here but doesn't hurt.
+	// Pastikan jalur impor ini benar untuk pengaturan modul Anda.
+	// Ganti "github.com/Renlikesmoon/Proto-Go" dengan nama modul Anda jika berbeda.
+	"github.com/Renlikesmoon/Proto-Go/commands" // Untuk commands.HandleMessage
+	"github.com/Renlikesmoon/Proto-Go/lib"      // Untuk lib.StartClient dan lib.Client
+	// "github.com/Renlikesmoon/Proto-Go/config" // Config digunakan oleh commands, tidak secara langsung di main, jadi impor ini sering tidak terlalu dibutuhkan di sini tetapi tidak masalah jika ada.
 
-	"go.mau.fi/whatsmeow/types/events" // For whatsmeow event types
+	"go.mau.fi/whatsmeow/types/events" // Untuk event whatsmeow
 )
 
-// main is the entry point of the Go application.
+// main adalah titik masuk aplikasi Go.
 func main() {
-	// Check if a phone number argument is provided.
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: go run . <phone_number>")
-	}
-	// Get the phone number from the command line arguments.
-	phone := os.Args[1]
+	// --- Nomor telepon langsung ditetapkan di sini ---
+	// Ganti dengan nomor yang Anda inginkan.
+	phone := "6285954540177"
+	// --- Akhir hardcode ---
 
-	// Start the Whatsmeow client. This function handles connecting,
-	// pairing (if needed), and returning any errors.
-	err := lib.StartClient(phone) // This calls the StartClient function from your lib package
+	// Mulai klien Whatsmeow. Fungsi ini menangani koneksi,
+	// pairing (jika diperlukan), dan mengembalikan kesalahan apa pun.
+	err := lib.StartClient(phone) // Ini memanggil fungsi StartClient dari paket lib Anda
 	if err != nil {
-		log.Fatalf("Error starting WhatsApp client: %v", err)
+		log.Fatalf("Error saat memulai klien WhatsApp: %v", err)
 	}
 
-	// Add an event handler to the Whatsmeow client to process incoming events.
-	// This runs in a separate goroutine managed by whatsmeow itself.
+	// Tambahkan event handler ke klien Whatsmeow untuk memproses event yang masuk.
+	// Ini berjalan dalam goroutine terpisah yang dikelola oleh whatsmeow itu sendiri.
 	lib.Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			// Ignore messages sent by the bot itself to prevent infinite loops.
+			// Abaikan pesan yang dikirim oleh bot itu sendiri untuk mencegah loop tak terbatas.
 			if v.Info.MessageSource.IsFromMe {
 				return
 			}
-			// Route incoming messages to the commands handler.
+			// Rute pesan masuk ke handler perintah.
 			commands.HandleMessage(v)
 		case *events.Connected:
-			// Log when the WhatsApp client successfully connects.
-			log.Println("WhatsApp client connected!")
+			// Catat ketika klien WhatsApp berhasil terhubung.
+			log.Println("Klien WhatsApp terhubung!")
 		case *events.Disconnected:
-			// Log when the WhatsApp client disconnects.
-			// Whatsmeow library typically handles automatic reconnection.
-			log.Println("WhatsApp client disconnected.")
-			// You could add custom reconnection logic here if needed,
-			// but for most cases, whatsmeow's built-in handling is sufficient.
+			// Catat ketika klien WhatsApp terputus.
+			// Pustaka Whatsmeow biasanya menangani penyambungan ulang otomatis.
+			log.Println("Klien WhatsApp terputus.")
 		case *events.QR:
-			// Your lib.StartClient already handles displaying the QR code.
-			// We'll just log that the QR event occurred here.
-			log.Println("Received QR code event (QR displayed by lib.StartClient).")
+			// lib.StartClient Anda sudah menangani tampilan kode QR.
+			// Kita hanya akan mencatat bahwa event QR terjadi di sini.
+			log.Println("Menerima event kode QR (QR ditampilkan oleh lib.StartClient).")
 		case *events.PairingCode:
-			// Your lib.StartClient already handles displaying the pairing code.
-			// We'll just log that the PairingCode event occurred here.
-			log.Println("Received Pairing Code event (code displayed by lib.StartClient).")
-		// Add other event types you might want to log or handle here.
+			// Serupa dengan QR, event PairingCode ditangani oleh PairPhone di StartClient.
+			// Kita hanya akan mencatat bahwa event Pairing Code terjadi di sini.
+			log.Println("Menerima event kode Pairing (kode ditampilkan oleh lib.StartClient).")
 		}
 	})
 
-	// This blocks the main goroutine indefinitely, keeping the application running.
-	// Whatsmeow operates in its own goroutines for networking and event handling.
+	// Ini akan memblokir goroutine utama tanpa batas waktu, menjaga aplikasi tetap berjalan.
+	// Whatsmeow beroperasi dalam goroutine sendiri untuk jaringan dan penanganan event.
 	select {}
 }
