@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"go.mau.fi/whatsmeow/types/events"
-	"wa_bot/lib"   // Pastikan import path ini benar sesuai struktur proyek Anda
+	"github.com/Renlikesmoon/Proto-Go/lib"   // Pastikan import path ini benar sesuai struktur proyek Anda
 	"wa_bot/config" // Import the config package
 )
 
