@@ -2,64 +2,56 @@ package lib
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"os"
 	"time"
 
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store"
-	"go.mau.fi/whatsmeow/store/sqlstore"
-	"go.mau.fi/whatsmeow/types/events"
-	_ "modernc.org/sqlite"
+	"github.com/mdp/qrterminal/v3"
+	"github.com/tulir/whatsmeow"
+	"github.com/tulir/whatsmeow/store/sqlstore"
+	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/proto"
 )
 
 var Client *whatsmeow.Client
 
-func StartWhatsAppWithCode(phone string) error {
-	dbLog := store.NoopLogger{}
+func InitClient() {
+	dbLog := waLog.Noop // kosongkan logger (tidak spam)
+	ctx := context.Background()
 
 	container, err := sqlstore.New("sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
-		return fmt.Errorf("db error: %w", err)
+		log.Fatalf("DB error: %v", err)
 	}
 
-	deviceStore, err := container.GetFirstDevice()
+	deviceStore, err := container.GetFirstDevice(ctx)
 	if err != nil {
-		return fmt.Errorf("device error: %w", err)
+		log.Fatalf("Device store error: %v", err)
 	}
 
-	Client = whatsmeow.NewClient(deviceStore, dbLog)
+	Client = whatsmeow.NewClient(deviceStore, waLog.Noop)
 
 	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
-		case *events.Ready:
-			fmt.Println("✅ WhatsApp connected as", Client.Store.PushName)
-		case *events.Disconnected:
-			fmt.Println("⚠️ Disconnected:", v.Reason)
+		case *whatsmeow.events.ConnectionOpened:
+			log.Println("[OK] Bot connected as:", Client.Store.ID.User)
+		case *whatsmeow.events.Disconnected:
+			log.Println("[!] Disconnected")
 		}
 	})
 
 	if Client.Store.ID == nil {
-		err = Client.Connect()
+		pairResp, err := Client.PairPhone(ctx, "628xxx", false, whatsmeow.PairClientTypeClient, "")
 		if err != nil {
-			return fmt.Errorf("connect error: %w", err)
+			log.Fatalf("Pair error: %v", err)
 		}
 
-		// Pair with code
-		resp, err := Client.PairPhone(context.Background(), phone, whatsmeow.PairClientChrome)
-		if err != nil {
-			return fmt.Errorf("pairing error: %w", err)
-		}
-
-		fmt.Println("🔑 Kode pairing:", resp.Code)
-		fmt.Println("➡️ Masukkan kode ini di WhatsApp Web (Link with code).")
-		return nil
+		qrterminal.Generate(pairResp, qrterminal.L, os.Stdout)
+		log.Println("[!] Scan QR Code above to login")
 	} else {
 		err = Client.Connect()
 		if err != nil {
-			return fmt.Errorf("reconnect error: %w", err)
+			log.Fatalf("Connect error: %v", err)
 		}
-		fmt.Println("✅ WhatsApp reconnected as", Client.Store.PushName)
 	}
-
-	return nil
 }
