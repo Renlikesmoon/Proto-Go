@@ -1,62 +1,60 @@
-package anime
+package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
+	"whatsbot/lib"
+
+	"go.mau.fi/whatsmeow/types/events"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
 )
 
-type AnimeResult struct {
-	Data []struct {
-		MalID int `json:"mal_id"`
-		Title string `json:"title"`
-		Images struct {
-			JPG struct {
-				ImageURL string `json:"image_url"`
-			} `json:"jpg"`
-		} `json:"images"`
-		Score float64 `json:"score"`
-		Episodes int `json:"episodes"`
-		Synopsis string `json:"synopsis"`
-		Url string `json:"url"`
-	} `json:"data"`
+type AnimeCommand struct{}
+
+func (a *AnimeCommand) Prefix() string {
+	return ".anime"
 }
 
-func SearchAnime(query string) (string, error) {
-	baseUrl := "https://api.jikan.moe/v4/anime"
-	reqUrl := fmt.Sprintf("%s?q=%s&limit=1", baseUrl, url.QueryEscape(query))
+func (a *AnimeCommand) Run(evt *events.Message) {
+	msg := getMessageText(evt)
+	args := strings.TrimSpace(strings.TrimPrefix(msg, a.Prefix()))
+	if args == "" {
+		reply(evt, "Usage: .anime <search>")
+		return
+	}
 
-	resp, err := http.Get(reqUrl)
+	url := fmt.Sprintf("https://api.jikan.moe/v4/anime?q=%s&limit=1", args)
+	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		reply(evt, "Error fetching data")
+		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API error: %s", resp.Status)
+	var result struct {
+		Data []struct {
+			Title    string `json:"title"`
+			Synopsis string `json:"synopsis"`
+			URL      string `json:"url"`
+		} `json:"data"`
 	}
 
-	var result AnimeResult
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return "", err
-	}
-
-	if len(result.Data) == 0 {
-		return "Anime tidak ditemukan.", nil
+	if err != nil || len(result.Data) == 0 {
+		reply(evt, "Anime not found")
+		return
 	}
 
 	anime := result.Data[0]
-	message := fmt.Sprintf(
-		"🎬 *%s*\n⭐ Score: %.2f | 🧩 Episodes: %d\n\n_%s_\n\n🔗 %s",
-		anime.Title,
-		anime.Score,
-		anime.Episodes,
-		strings.TrimSpace(anime.Synopsis),
-		anime.Url,
-	)
+	text := fmt.Sprintf("Title: %s\nSynopsis: %s\nMore info: %s", anime.Title, anime.Synopsis, anime.URL)
+	reply(evt, text)
+}
 
-	return message, nil
+func reply(evt *events.Message, text string) {
+	lib.Client.SendMessage(context.Background(), evt.Info.Chat, &waProto.Message{
+		Conversation: &text,
+	})
 }
