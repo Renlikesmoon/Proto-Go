@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"context"
@@ -15,67 +15,69 @@ import (
 
 var Client *whatsmeow.Client
 
-// StartClient initializes the Whatsmeow client and handles authentication.
-// It now accepts a phoneNumber string to be used during the pairing process.
-func StartClient(phoneNumber string) error { // Added phoneNumber parameter and error return
- phoneNumber:= "6285954540177"
+// StartClient menginisialisasi klien Whatsmeow dan menangani autentikasi.
+// Nomor telepon untuk pairing sekarang langsung ditetapkan di dalam fungsi ini.
+func StartClient() error { // Parameter 'phoneNumber' telah dihapus
+	// --- Nomor telepon langsung ditetapkan di sini ---
+	phoneNumber := "6285954540177" // Nomor hardcode langsung di dalam fungsi
+	// --- Akhir hardcode ---
+
 	ctx := context.Background()
 
-	// Use no-op logger to avoid spamming logs
+	// Gunakan logger kosong agar tidak spam log
 	dbLog := waLog.Noop
 
-	// Create SQLite session database connection
+	// Buat koneksi database session SQLite
 	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
-		return fmt.Errorf("❌ Gagal konek database: %w", err) // Return error instead of os.Exit
+		return fmt.Errorf("❌ Gagal konek database: %w", err)
 	}
 
-	// Get the first device from the store
+	// Ambil device pertama dari store
 	device, err := container.GetFirstDevice(ctx)
 	if err != nil {
-		return fmt.Errorf("❌ Gagal ambil device: %w", err) // Return error
+		return fmt.Errorf("❌ Gagal ambil device: %w", err)
 	}
 
-	// Initialize Whatsmeow client with device and logger
+	// Inisialisasi client Whatsmeow dengan device dan logger
 	Client = whatsmeow.NewClient(device, dbLog)
 
-	// Event handler for incoming events
+	// Event handler untuk menangani event masuk
 	Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
 			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
-			// You'll likely want to route this to your commands.HandleMessage here
-			// For example: commands.HandleMessage(v) (make sure to import "wa_bot/commands")
+			// Anda mungkin ingin merutekan ini ke commands.HandleMessage di sini
+			// Misalnya: commands.HandleMessage(v) (pastikan untuk mengimpor "wa_bot/commands")
 		case *events.Disconnected:
 			fmt.Println("🔌 Terputus dari WhatsApp")
 		}
 	})
 
-	// If no session ID exists, start the pairing process with QR code
+	// Jika belum ada session ID, mulai proses pairing dengan QR
 	if Client.Store.ID == nil {
-		// THIS IS WHERE YOUR PROVIDED SNIPPET FITS
 		resp, err := Client.PairPhone(
-			ctx,                     // The context for the operation
-			phoneNumber,             // The phone number you want to pair with
-			false,                   // showPushNotification (usually false for terminal bots)
-			whatsmeow.PairClientChrome, // The client type (e.g., Chrome, Firefox, etc.)
-			"Go Bot (Desktop)",      // A display name for the client (e.g., "Chrome (Linux)")
+			ctx,
+			phoneNumber,             // Sekarang menggunakan variabel lokal 'phoneNumber'
+			false,                   // showPushNotification
+			whatsmeow.PairClientChrome, // Tipe klien
+			"Go Bot (Desktop)",      // Nama tampilan untuk klien
 		)
 		if err != nil {
-			return fmt.Errorf("❌ Gagal pairing: %w", err) // Return error
+			return fmt.Errorf("❌ Gagal pairing: %w", err)
 		}
 
-		// Display QR code in the terminal
+		// Tampilkan QR code di terminal untuk discan
 		qrterminal.GenerateHalfBlock(resp, qrterminal.L, os.Stdout)
 		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
-		fmt.Printf("Kode Pairing: %s\n", resp) // Also show pairing code for convenience
+		fmt.Printf("Kode Pairing: %s\n", resp)
 	} else {
-		// If session exists, just connect
+		// Jika sudah ada session, langsung konek
 		err = Client.Connect()
 		if err != nil {
-			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err) // Return error
+			return fmt.Errorf("❌ Gagal konek ke WhatsApp: %w", err)
 		}
 		fmt.Println("✅ Terhubung ke WhatsApp sebagai", Client.Store.ID.User)
 	}
-	return nil // No error
+	return nil
 }
