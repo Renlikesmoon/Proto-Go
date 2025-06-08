@@ -6,14 +6,12 @@ import (
 	"sync"
 
 	"go.mau.fi/whatsmeow/store"
-	waTypes "go.mau.fi/whatsmeow/types"
 )
 
 type JSONStore struct {
-	mu     sync.Mutex
-	Store  *store.Device
-	Path   string
-	Client *waTypes.DeviceID
+	mu    sync.Mutex
+	Store *store.Device
+	Path  string
 }
 
 func NewJSONStore(path string) (*JSONStore, error) {
