@@ -7,32 +7,37 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/Renlikesmoon/Proto-Go/jsonstore"
+
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
+	"go.mau.fi/whatsmeow/store/mem"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
-
-	"github.com/Renlikesmoon/Proto-Go/jsonstore" // Pastikan sesuai dengan struktur proyek Anda
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Konfigurasi pairing
-	phoneNumber := "6285954540177"               // Ganti dengan nomor Anda
-	clientType := whatsmeow.PairClientChrome     // Bisa juga Firefox, Edge, Safari
-	clientName := "Go Bot (Desktop)"             // Nama klien WhatsApp
+	logger := waLog.Noop
 
-	// Load session dari file JSON
-	store, err := jsonstore.NewJSONStore("session.json")
+	// Inisialisasi store JSON
+	js, err := jsonstore.NewJSONStore("session.json")
 	if err != nil {
 		fmt.Println("❌ Gagal load session:", err)
 		return
 	}
 
-	logger := waLog.Noop
-	client := whatsmeow.NewClient(store.GetDevice(), logger)
+	device := js.GetDevice()
+	if device == nil {
+		// Jika tidak ada session, buat device baru
+		memStore := mem.New()
+		device = store.NewDevice(memStore, nil)
+		js.SetDevice(device)
+	}
 
-	// Event handler
+	client := whatsmeow.NewClient(device, logger)
+
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
@@ -42,34 +47,35 @@ func main() {
 		}
 	})
 
-	// Jika belum login, lakukan pairing otomatis
+	// Pair jika belum login
 	if client.Store.ID == nil {
-		resp, err := client.PairPhone(ctx, phoneNumber, false, clientType, clientName)
+		resp, err := client.PairPhone(ctx, "6285954540177", false, whatsmeow.PairClientChrome, "GoBot")
 		if err != nil {
-			fmt.Println("❌ Pairing gagal:", err)
+			fmt.Println("❌ Gagal pairing:", err)
 			return
 		}
-		fmt.Println("✅ Pairing berhasil. Kode:", resp)
+		fmt.Println("✅ Silakan scan QR dengan WhatsApp kamu.")
+		fmt.Println("Pairing code:", resp)
 
-		// Simpan session
-		if err := store.Save(); err != nil {
+		// Simpan sesi
+		if err := js.Save(); err != nil {
 			fmt.Println("❌ Gagal simpan session:", err)
 		}
 	}
 
 	// Connect
-	if err := client.Connect(); err != nil {
+	err = client.Connect()
+	if err != nil {
 		fmt.Println("❌ Gagal konek:", err)
 		return
 	}
+	fmt.Println("✅ Terhubung sebagai", client.Store.ID.User)
 
-	fmt.Println("✅ Terhubung ke WhatsApp sebagai", client.Store.ID.User)
+	// Tunggu Ctrl+C
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
 
-	// Tunggu Ctrl+C untuk keluar
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
-
-	fmt.Println("👋 Keluar dari aplikasi.")
+	fmt.Println("👋 Keluar dari bot.")
 	client.Disconnect()
 }
