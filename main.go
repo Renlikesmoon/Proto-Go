@@ -41,14 +41,6 @@ func main() {
 		fmt.Println("✅ Scan QR dengan WhatsApp kamu:")
 		fmt.Println(resp)
 
-		// Simpan session baru
-		data, err := client.Store.Serialize()
-		if err == nil {
-			err = js.Save(data)
-			if err != nil {
-				fmt.Println("❌ Gagal simpan session:", err)
-			}
-		}
 	}
 
 	err = client.Connect()
