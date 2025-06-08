@@ -11,19 +11,22 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 
 	"github.com/mdp/qrterminal/v3"
+	"github.com/mdp/qrterminal/v3/qr"
 )
 
 var Client *whatsmeow.Client
 
 func StartClient() {
-	dbLog := waLog.Noop // tidak spam console
-	container, err := sqlstore.New("sqlite", "file:session.db?_foreign_keys=on", dbLog)
+	ctx := context.Background()
+
+	dbLog := waLog.Noop // Tidak spam log
+	container, err := sqlstore.New(ctx, "sqlite", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		fmt.Println("❌ Gagal konek DB:", err)
 		os.Exit(1)
 	}
 
-	device, err := container.GetFirstDevice(context.Background())
+	device, err := container.GetFirstDevice(ctx)
 	if err != nil {
 		fmt.Println("❌ Gagal ambil device:", err)
 		os.Exit(1)
@@ -43,13 +46,13 @@ func StartClient() {
 
 	if Client.Store.ID == nil {
 		// Pairing baru
-		resp, err := Client.PairPhone(context.Background(), "", false, whatsmeow.PairClientTypeClient, "")
+		resp, err := Client.PairPhone(ctx, "", false, "client", "")
 		if err != nil {
 			fmt.Println("❌ Gagal pairing:", err)
 			return
 		}
 
-		qrterminal.GenerateHalfBlock(resp.URI)
+		qrterminal.GenerateHalfBlock(resp, qr.L, os.Stdout)
 		fmt.Println("✅ Scan QR di atas dengan WhatsApp kamu.")
 	} else {
 		// Langsung konek
