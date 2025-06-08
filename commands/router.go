@@ -6,7 +6,7 @@ import (
 
 	"go.mau.fi/whatsmeow/types/events"
 	"github.com/Renlikesmoon/Proto-Go/lib"   // Pastikan import path ini benar sesuai struktur proyek Anda
-	"wa_bot/config" // Import the config package
+	"github.com/Renlikesmoon/Proto-Go/config" // Import the config package
 )
 
 // commandList holds all the registered commands.
