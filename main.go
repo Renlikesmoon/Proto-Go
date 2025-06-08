@@ -14,7 +14,6 @@ import (
 
 func main() {
 	logger := waLog.Noop
-	dbLog := waLog.Noop
 	client := whatsmeow.NewClient(nil, logger)
 
 	client.AddEventHandler(func(evt interface{}) {
