@@ -1,7 +1,6 @@
 package jsonstore
 
 import (
-	"fmt"
 	"os"
 )
 
