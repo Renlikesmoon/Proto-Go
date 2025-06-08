@@ -16,11 +16,13 @@ import (
 var Client *whatsmeow.Client
 
 // StartClient menginisialisasi klien Whatsmeow dan menangani autentikasi.
-// Nomor telepon untuk pairing sekarang langsung ditetapkan di dalam fungsi ini.
+// Nomor telepon dan detail browser untuk pairing sekarang langsung ditetapkan di dalam fungsi ini.
 func StartClient() error { // Parameter 'phoneNumber' telah dihapus
-	// --- Nomor telepon langsung ditetapkan di sini ---
-	phoneNumber := "6285954540177" // Nomor hardcode langsung di dalam fungsi
-	// --- Akhir hardcode ---
+	// --- Detail Pairing Ditetapkan Langsung di sini ---
+	phoneNumber := "6285954540177"       // Nomor telepon untuk pairing
+	clientType := whatsmeow.PairClientChrome // Tipe klien (misalnya, Chrome, Firefox, dll.)
+	clientDisplayName := "Go Bot (Desktop)"  // Nama tampilan untuk klien
+	// --- Akhir Hardcode Detail ---
 
 	ctx := context.Background()
 
@@ -48,7 +50,7 @@ func StartClient() error { // Parameter 'phoneNumber' telah dihapus
 		case *events.Message:
 			fmt.Println("📩 Pesan masuk dari:", v.Info.Sender.String())
 			// Anda mungkin ingin merutekan ini ke commands.HandleMessage di sini
-			// Misalnya: commands.HandleMessage(v) (pastikan untuk mengimpor "wa_bot/commands")
+			// Misalnya: commands.HandleMessage(v) (pastikan untuk mengimpor "whatsbot/commands")
 		case *events.Disconnected:
 			fmt.Println("🔌 Terputus dari WhatsApp")
 		}
@@ -58,10 +60,10 @@ func StartClient() error { // Parameter 'phoneNumber' telah dihapus
 	if Client.Store.ID == nil {
 		resp, err := Client.PairPhone(
 			ctx,
-			phoneNumber,             // Sekarang menggunakan variabel lokal 'phoneNumber'
-			false,                   // showPushNotification
-			whatsmeow.PairClientChrome, // Tipe klien
-			"Go Bot (Desktop)",      // Nama tampilan untuk klien
+			phoneNumber,        // Menggunakan variabel lokal 'phoneNumber'
+			false,              // showPushNotification
+			clientType,         // Menggunakan variabel lokal 'clientType'
+			clientDisplayName,  // Menggunakan variabel lokal 'clientDisplayName'
 		)
 		if err != nil {
 			return fmt.Errorf("❌ Gagal pairing: %w", err)
