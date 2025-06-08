@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"whatsbot/lib"
+	"github.com/Renlikesmoon/Proto-Go/lib"
 
 	"go.mau.fi/whatsmeow/types/events"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
